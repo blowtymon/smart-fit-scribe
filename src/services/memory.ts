@@ -87,6 +87,30 @@ export class MemoryService {
     }));
   }
 
+  async getLogsByDay(targetDate: Date): Promise<Log[]> {
+    const dayStart = new Date(targetDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(targetDate);
+    dayEnd.setHours(23, 59, 59, 999);
+    
+    return this.getLogsByDateRange(dayStart, dayEnd);
+  }
+
+  async getMetricTrend(metric: 'weight' | 'waist' | 'doms' | 'sleep' | 'bodyFat', days: number = 7): Promise<Array<{date: Date, value: number}>> {
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - (days * 24 * 60 * 60 * 1000));
+    
+    const logs = await this.getLogsByDateRange(startDate, endDate);
+    
+    return logs
+      .filter(log => log.structured && log.structured[metric] !== undefined)
+      .map(log => ({
+        date: log.timestamp,
+        value: log.structured![metric] as number
+      }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }
+
   async generateSummary(timeframe: 'week' | 'month'): Promise<string> {
     const now = new Date();
     const daysBack = timeframe === 'week' ? 7 : 30;

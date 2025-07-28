@@ -23,6 +23,8 @@ export const LogEntry = ({ onSubmit }: LogEntryProps) => {
   // Structured form state
   const [doms, setDoms] = useState([3]);
   const [weight, setWeight] = useState('');
+  const [waist, setWaist] = useState('');
+  const [bodyFat, setBodyFat] = useState('');
   const [sleep, setSleep] = useState('');
   const [notes, setNotes] = useState('');
   
@@ -48,12 +50,16 @@ export const LogEntry = ({ onSubmit }: LogEntryProps) => {
     const structured = {
       doms: doms[0],
       weight: weight ? parseFloat(weight) : undefined,
+      waist: waist ? parseFloat(waist) : undefined,
+      bodyFat: bodyFat ? parseFloat(bodyFat) : undefined,
       sleep: sleep ? parseFloat(sleep) : undefined,
       notes: notes || undefined,
     };
 
     let content = `DOMS: ${doms[0]}/10`;
     if (weight) content += `, Weight: ${weight}kg`;
+    if (waist) content += `, Waist: ${waist}cm`;
+    if (bodyFat) content += `, Body Fat: ${bodyFat}%`;
     if (sleep) content += `, Sleep: ${sleep}h`;
     if (notes) content += `, Notes: ${notes}`;
 
@@ -66,6 +72,8 @@ export const LogEntry = ({ onSubmit }: LogEntryProps) => {
     // Reset form
     setDoms([3]);
     setWeight('');
+    setWaist('');
+    setBodyFat('');
     setSleep('');
     setNotes('');
     
@@ -109,9 +117,9 @@ export const LogEntry = ({ onSubmit }: LogEntryProps) => {
               <div className="space-y-2">
                 <Label className="text-sm text-muted-foreground">Example formats:</Label>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="text-xs">DOMS 4, tired legs</Badge>
-                  <Badge variant="outline" className="text-xs">72.1kg, feeling strong</Badge>
-                  <Badge variant="outline" className="text-xs">7h sleep, great recovery</Badge>
+                  <Badge variant="outline" className="text-xs">DOMS 3, 71.4kg, 6.5h sleep</Badge>
+                  <Badge variant="outline" className="text-xs">Waist 85cm, feeling lean</Badge>
+                  <Badge variant="outline" className="text-xs">Body fat 12%, great progress</Badge>
                   <Badge variant="outline" className="text-xs">Chest day, 5x5 bench</Badge>
                 </div>
               </div>
@@ -152,7 +160,7 @@ export const LogEntry = ({ onSubmit }: LogEntryProps) => {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>DOMS Level: {doms[0]}/10</Label>
                   <div className="px-2">
@@ -171,30 +179,58 @@ export const LogEntry = ({ onSubmit }: LogEntryProps) => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="weight">Weight (kg)</Label>
-                  <Input
-                    id="weight"
-                    type="number"
-                    step="0.1"
-                    value={weight}
-                    onChange={(e) => setWeight(e.target.value)}
-                    placeholder="71.4"
-                    className="bg-input border-border/50"
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="weight">Weight (kg)</Label>
+                    <Input
+                      id="weight"
+                      type="number"
+                      step="0.1"
+                      value={weight}
+                      onChange={(e) => setWeight(e.target.value)}
+                      placeholder="71.4"
+                      className="bg-input border-border/50"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="sleep">Sleep (hours)</Label>
-                  <Input
-                    id="sleep"
-                    type="number"
-                    step="0.5"
-                    value={sleep}
-                    onChange={(e) => setSleep(e.target.value)}
-                    placeholder="7.5"
-                    className="bg-input border-border/50"
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="waist">Waist (cm)</Label>
+                    <Input
+                      id="waist"
+                      type="number"
+                      step="0.1"
+                      value={waist}
+                      onChange={(e) => setWaist(e.target.value)}
+                      placeholder="85.0"
+                      className="bg-input border-border/50"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bodyFat">Body Fat (%)</Label>
+                    <Input
+                      id="bodyFat"
+                      type="number"
+                      step="0.1"
+                      value={bodyFat}
+                      onChange={(e) => setBodyFat(e.target.value)}
+                      placeholder="12.5"
+                      className="bg-input border-border/50"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="sleep">Sleep (hours)</Label>
+                    <Input
+                      id="sleep"
+                      type="number"
+                      step="0.5"
+                      value={sleep}
+                      onChange={(e) => setSleep(e.target.value)}
+                      placeholder="7.5"
+                      className="bg-input border-border/50"
+                    />
+                  </div>
                 </div>
               </div>
 

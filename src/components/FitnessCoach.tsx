@@ -16,7 +16,9 @@ export interface Log {
   structured?: {
     doms?: number;
     weight?: number;
+    waist?: number;
     sleep?: number;
+    bodyFat?: number;
     notes?: string;
   };
 }
@@ -58,8 +60,11 @@ export const FitnessCoach = () => {
   }, []);
 
   const handleNewLog = async (log: Omit<Log, 'id' | 'timestamp'>) => {
+    // Parse natural language for structured data if not already structured
+    const enhancedLog = log.structured ? log : parseNaturalLanguageLog(log);
+    
     const newLog: Log = {
-      ...log,
+      ...enhancedLog,
       id: crypto.randomUUID(),
       timestamp: new Date()
     };
@@ -82,9 +87,39 @@ export const FitnessCoach = () => {
     setChatMessages(prev => [...prev, aiResponse]);
   };
 
+  const parseNaturalLanguageLog = (log: Omit<Log, 'id' | 'timestamp'>): Omit<Log, 'id' | 'timestamp'> => {
+    const content = log.content.toLowerCase();
+    const structured: any = {};
+
+    // Parse DOMS (various formats)
+    const domsMatch = content.match(/doms[:\s]*(\d+)/i);
+    if (domsMatch) structured.doms = parseInt(domsMatch[1]);
+
+    // Parse weight (kg)
+    const weightMatch = content.match(/([\d.]+)\s*kg/i);
+    if (weightMatch) structured.weight = parseFloat(weightMatch[1]);
+
+    // Parse waist measurement 
+    const waistMatch = content.match(/waist[:\s]*([\d.]+)/i);
+    if (waistMatch) structured.waist = parseFloat(waistMatch[1]);
+
+    // Parse sleep
+    const sleepMatch = content.match(/([\d.]+)\s*h?\s*sleep|sleep[:\s]*([\d.]+)/i);
+    if (sleepMatch) structured.sleep = parseFloat(sleepMatch[1] || sleepMatch[2]);
+
+    // Parse body fat
+    const bfMatch = content.match(/([\d.]+)%?\s*(?:body\s*)?fat|bf[:\s]*([\d.]+)/i);
+    if (bfMatch) structured.bodyFat = parseFloat(bfMatch[1] || bfMatch[2]);
+
+    return {
+      ...log,
+      structured: Object.keys(structured).length > 0 ? structured : undefined
+    };
+  };
+
   const generateLogResponse = (log: Log): string => {
     if (log.structured) {
-      const { doms, weight, sleep } = log.structured;
+      const { doms, weight, waist, sleep, bodyFat } = log.structured;
       let response = "📊 **Log Analysis**\n\n";
       
       if (doms !== undefined) {
@@ -93,8 +128,10 @@ export const FitnessCoach = () => {
         else response += "🔴 High DOMS - prioritize recovery today\n";
       }
       
-      if (weight) response += `⚖️ Weight: ${weight}kg logged\n`;
-      if (sleep) response += `😴 Sleep: ${sleep}h - ${sleep >= 7 ? 'Good!' : 'Could be better'}\n`;
+      if (weight) response += `⚖️ Weight: \`${weight}kg\` logged\n`;
+      if (waist) response += `📏 Waist: \`${waist}cm\` recorded\n`;
+      if (bodyFat) response += `📊 Body Fat: \`${bodyFat}%\` tracked\n`;
+      if (sleep) response += `😴 Sleep: \`${sleep}h\` - ${sleep >= 7 ? 'Good!' : 'Could be better'}\n`;
       
       response += "\n💡 Keep tracking consistently for better insights!";
       return response;

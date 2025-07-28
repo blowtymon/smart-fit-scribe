@@ -101,6 +101,43 @@ export const ChatInterface = ({ messages, onSendMessage, logs, settings }: ChatI
     // Simple pattern matching for common queries
     const lowerQuery = query.toLowerCase();
     
+    // Handle date-specific queries like "What was my waist last Monday?"
+    if (lowerQuery.includes('last monday') || lowerQuery.includes('monday')) {
+      const lastMonday = getLastMonday();
+      const mondayLogs = logs.filter(log => isSameDay(log.timestamp, lastMonday));
+      
+      if (lowerQuery.includes('waist')) {
+        const waistLog = mondayLogs.find(log => log.structured?.waist);
+        if (waistLog) {
+          return `📏 **Waist Measurement**\n\nLast Monday (${lastMonday.toLocaleDateString()}): \`${waistLog.structured?.waist}cm\``;
+        }
+        return `📏 **Waist Measurement**\n\nNo waist measurement found for last Monday (${lastMonday.toLocaleDateString()})`;
+      }
+      
+      if (lowerQuery.includes('weight')) {
+        const weightLog = mondayLogs.find(log => log.structured?.weight);
+        if (weightLog) {
+          return `⚖️ **Weight Tracking**\n\nLast Monday (${lastMonday.toLocaleDateString()}): \`${weightLog.structured?.weight}kg\``;
+        }
+      }
+    }
+
+    // Handle DOMS trend queries
+    if (lowerQuery.includes('doms') && (lowerQuery.includes('week') || lowerQuery.includes('changed'))) {
+      const weeklyDoms = logs
+        .filter(log => log.structured?.doms !== undefined && isWithinDays(log.timestamp, 7))
+        .map(log => log.structured!.doms!)
+        .sort();
+      
+      if (weeklyDoms.length > 0) {
+        const avgDoms = weeklyDoms.reduce((sum, val) => sum + val, 0) / weeklyDoms.length;
+        const trend = weeklyDoms.length > 1 ? 
+          (weeklyDoms[weeklyDoms.length - 1] > weeklyDoms[0] ? 'increasing' : 'decreasing') : 'stable';
+        
+        return `📊 **DOMS Trend This Week**\n\nAverage: \`${avgDoms.toFixed(1)}/10\`\nTrend: ${trend}\nReadings: ${weeklyDoms.join(', ')}\n\n${avgDoms <= 3 ? '✅ Good recovery pattern' : '⚠️ High soreness - consider recovery focus'}`;
+      }
+    }
+    
     if (lowerQuery.includes('doms')) {
       const recentDoms = logs
         .filter(log => log.structured?.doms !== undefined)
@@ -117,13 +154,46 @@ export const ChatInterface = ({ messages, onSendMessage, logs, settings }: ChatI
         .filter(log => log.structured?.weight !== undefined)
         .slice(0, 3);
       
+      const recentWaist = logs
+        .filter(log => log.structured?.waist !== undefined)
+        .slice(0, 3);
+      
+      let response = '';
       if (recentWeights.length > 0) {
         const latestWeight = recentWeights[0].structured?.weight;
-        return `⚖️ **Weight Tracking**\n\nLatest weight: \`${latestWeight}kg\`\n\nConfigure your OpenAI API key in settings for detailed analysis and trends.`;
+        response += `⚖️ **Weight:** \`${latestWeight}kg\`\n`;
+      }
+      if (recentWaist.length > 0) {
+        const latestWaist = recentWaist[0].structured?.waist;
+        response += `📏 **Waist:** \`${latestWaist}cm\`\n`;
+      }
+      
+      if (response) {
+        return response + '\nConfigure your OpenAI API key in settings for detailed analysis and trends.';
       }
     }
     
     return `🤖 **AI Coach Response**\n\nI see you asked: "${query}"\n\nFor personalized, science-backed coaching with real-time research, please:\n\n1. Add your **OpenAI API key** in Settings\n2. Enable **web search** for latest research\n3. Continue logging your training data\n\nI'll then provide detailed analysis based on your complete training history!`;
+  };
+
+  const getLastMonday = (): Date => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0 = Sunday
+    const lastMonday = new Date(today);
+    lastMonday.setDate(today.getDate() - daysToMonday - 7);
+    return lastMonday;
+  };
+
+  const isSameDay = (date1: Date, date2: Date): boolean => {
+    return date1.toDateString() === date2.toDateString();
+  };
+
+  const isWithinDays = (date: Date, days: number): boolean => {
+    const now = new Date();
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    return diffDays <= days;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
