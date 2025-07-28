@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
-import { Search, Calendar, TrendingUp, Activity } from 'lucide-react';
+import { Calendar, Filter, BarChart3, FileText, Download, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { Log } from './FitnessCoach';
 
 interface LogHistoryProps {
@@ -33,8 +34,8 @@ export const LogHistory = ({ logs }: LogHistoryProps) => {
 
   const getLogTypeIcon = (type: string) => {
     switch (type) {
-      case 'workout': return <Activity className="h-4 w-4" />;
-      case 'recovery': return <TrendingUp className="h-4 w-4" />;
+      case 'workout': return <BarChart3 className="h-4 w-4" />;
+      case 'recovery': return <Calendar className="h-4 w-4" />;
       case 'nutrition': return '🍎';
       case 'metrics': return '📊';
       default: return <Calendar className="h-4 w-4" />;
@@ -149,46 +150,87 @@ export const LogHistory = ({ logs }: LogHistoryProps) => {
                     key={log.id}
                     className="border border-border/50 rounded-lg p-4 hover:bg-muted/50 transition-colors"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <Badge className={getLogTypeColor(log.type)}>
-                          {getLogTypeIcon(log.type)}
-                          <span className="ml-1 capitalize">{log.type}</span>
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {format(log.timestamp, 'MMM dd, HH:mm')}
-                        </span>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-3">
+                        {getLogTypeIcon(log.type)}
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <Badge variant="outline" className="text-xs">
+                              {log.type}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {format(log.timestamp, 'MMM dd, HH:mm')}
+                            </span>
+                          </div>
+                          <p className="text-sm">{log.content}</p>
+                          
+                          {/* Display structured data */}
+                          {log.structured && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {log.structured.doms && (
+                                <Badge variant="secondary" className="text-xs">
+                                  DOMS: {log.structured.doms}/10
+                                </Badge>
+                              )}
+                              {log.structured.weight && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Weight: {log.structured.weight}kg
+                                </Badge>
+                              )}
+                              {log.structured.waist && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Waist: {log.structured.waist}cm
+                                </Badge>
+                              )}
+                              {log.structured.bodyFat && (
+                                <Badge variant="secondary" className="text-xs">
+                                  BF: {log.structured.bodyFat}%
+                                </Badge>
+                              )}
+                              {log.structured.sleep && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Sleep: {log.structured.sleep}h
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* Display file attachments */}
+                          {log.attachments && log.attachments.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Attachments ({log.attachments.length}):
+                              </p>
+                              <div className="space-y-1">
+                                {log.attachments.map((attachment, index) => (
+                                  <div key={index} className="flex items-center space-x-2 p-2 bg-muted/50 rounded border">
+                                    <FileText className="h-3 w-3 text-accent" />
+                                    <span className="text-xs font-medium">{attachment.fileName}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      ({(attachment.fileSize / 1024 / 1024).toFixed(2)} MB)
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 ml-auto"
+                                      onClick={() => {
+                                        // Download file
+                                        const link = document.createElement('a');
+                                        link.href = attachment.content;
+                                        link.download = attachment.fileName;
+                                        link.click();
+                                      }}
+                                    >
+                                      <Download className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    
-                    <p className="text-sm mb-3 text-foreground">{log.content}</p>
-                    
-                    {log.structured && (
-                      <div className="flex flex-wrap gap-3 text-xs">
-                        {log.structured.doms !== undefined && (
-                          <div className="flex items-center space-x-1">
-                            <span className="text-muted-foreground">DOMS:</span>
-                            <span className={`font-medium ${getDOMSColor(log.structured.doms)}`}>
-                              {log.structured.doms}/10
-                            </span>
-                          </div>
-                        )}
-                        {log.structured.weight && (
-                          <div className="flex items-center space-x-1">
-                            <span className="text-muted-foreground">Weight:</span>
-                            <span className="font-medium text-info">{log.structured.weight}kg</span>
-                          </div>
-                        )}
-                        {log.structured.sleep && (
-                          <div className="flex items-center space-x-1">
-                            <span className="text-muted-foreground">Sleep:</span>
-                            <span className={`font-medium ${log.structured.sleep >= 7 ? 'text-success' : 'text-warning'}`}>
-                              {log.structured.sleep}h
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>

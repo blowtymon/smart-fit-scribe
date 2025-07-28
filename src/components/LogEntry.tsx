@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Zap } from 'lucide-react';
+import { Save, Zap, Upload, FileText, X } from 'lucide-react';
 import type { Log } from './FitnessCoach';
 
 interface LogEntryProps {
@@ -30,19 +30,89 @@ export const LogEntry = ({ onSubmit }: LogEntryProps) => {
   
   // Quick log state
   const [quickLog, setQuickLog] = useState('');
+  
+  // File upload state
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
-  const handleQuickLog = () => {
-    if (!quickLog.trim()) return;
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const validFiles = files.filter(file => {
+      const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'text/plain'];
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      
+      if (!validTypes.includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload PDF, JPG, PNG, or TXT files only.",
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: "Files must be smaller than 10MB.",
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      return true;
+    });
+    
+    setUploadedFiles(prev => [...prev, ...validFiles]);
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const handleQuickLog = async () => {
+    if (!quickLog.trim() && uploadedFiles.length === 0) return;
+    
+    let attachments: any[] = [];
+    
+    if (uploadedFiles.length > 0) {
+      try {
+        attachments = await Promise.all(
+          uploadedFiles.map(async file => ({
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+            content: await fileToBase64(file)
+          }))
+        );
+      } catch (error) {
+        toast({
+          title: "File processing error",
+          description: "Failed to process uploaded files.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
     
     onSubmit({
       type: 'recovery',
-      content: quickLog,
+      content: quickLog || 'File upload',
+      attachments: attachments.length > 0 ? attachments : undefined
     });
     
     setQuickLog('');
+    setUploadedFiles([]);
     toast({
       title: "Log saved!",
-      description: "Your quick log has been recorded and sent to the AI coach.",
+      description: `Your ${attachments.length > 0 ? 'log with files' : 'quick log'} has been recorded.`,
     });
   };
 
@@ -86,8 +156,9 @@ export const LogEntry = ({ onSubmit }: LogEntryProps) => {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="quick" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-card">
+        <TabsList className="grid w-full grid-cols-3 bg-card">
           <TabsTrigger value="quick">Quick Log</TabsTrigger>
+          <TabsTrigger value="upload">File Upload</TabsTrigger>
           <TabsTrigger value="structured">Structured Entry</TabsTrigger>
         </TabsList>
 
@@ -126,11 +197,100 @@ export const LogEntry = ({ onSubmit }: LogEntryProps) => {
               
               <Button 
                 onClick={handleQuickLog}
-                disabled={!quickLog.trim()}
+                disabled={!quickLog.trim() && uploadedFiles.length === 0}
                 className="w-full bg-gradient-to-r from-accent to-accent-glow hover:from-accent-glow hover:to-accent"
               >
                 <Save className="h-4 w-4 mr-2" />
                 Save Quick Log
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="upload" className="space-y-4">
+          <Card className="bg-gradient-to-br from-card via-card to-card/90">
+            <CardHeader>
+              <div className="flex items-center space-x-2">
+                <Upload className="h-5 w-5 text-accent" />
+                <CardTitle className="text-lg">File Upload</CardTitle>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Upload DEXA scans, PDFs, reports, or other fitness-related documents
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="file-upload">Choose Files</Label>
+                <Input
+                  id="file-upload"
+                  type="file"
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png,.txt"
+                  onChange={handleFileUpload}
+                  className="bg-input border-border/50"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Accepted formats: PDF, JPG, PNG, TXT • Max size: 10MB per file
+                </p>
+              </div>
+
+              {uploadedFiles.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Uploaded Files ({uploadedFiles.length})</Label>
+                  <div className="space-y-2">
+                    {uploadedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg border border-border/50">
+                        <div className="flex items-center space-x-2">
+                          <FileText className="h-4 w-4 text-accent" />
+                          <div>
+                            <p className="text-sm font-medium">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(file.size / 1024 / 1024).toFixed(2)} MB • {file.type}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(index)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="upload-notes">Notes (Optional)</Label>
+                <Textarea
+                  id="upload-notes"
+                  value={quickLog}
+                  onChange={(e) => setQuickLog(e.target.value)}
+                  placeholder="Add context about these files... (e.g., 'DEXA scan from today', 'Lab results showing improvement')"
+                  className="min-h-[80px] bg-input border-border/50"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Common file types:</Label>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="text-xs">DEXA scans</Badge>
+                  <Badge variant="outline" className="text-xs">Blood work</Badge>
+                  <Badge variant="outline" className="text-xs">Body composition</Badge>
+                  <Badge variant="outline" className="text-xs">Training logs</Badge>
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleQuickLog}
+                disabled={uploadedFiles.length === 0}
+                className="w-full bg-gradient-to-r from-accent to-accent-glow hover:from-accent-glow hover:to-accent"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Files {uploadedFiles.length > 0 && `(${uploadedFiles.length})`}
               </Button>
             </CardContent>
           </Card>

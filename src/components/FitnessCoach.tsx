@@ -21,6 +21,12 @@ export interface Log {
     bodyFat?: number;
     notes?: string;
   };
+  attachments?: {
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    content: string; // base64 encoded file content
+  }[];
 }
 
 export interface ChatMessage {
