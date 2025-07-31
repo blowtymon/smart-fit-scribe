@@ -15,7 +15,7 @@ interface LogHistoryProps {
 
 export const LogHistory = ({ logs }: LogHistoryProps) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'workout' | 'nutrition' | 'recovery' | 'metrics'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'workout' | 'nutrition' | 'recovery' | 'metrics' | 'strength'>('all');
   const [dateFilter, setDateFilter] = useState('');
 
   const filteredLogs = logs.filter(log => {
@@ -38,6 +38,7 @@ export const LogHistory = ({ logs }: LogHistoryProps) => {
       case 'recovery': return <Calendar className="h-4 w-4" />;
       case 'nutrition': return '🍎';
       case 'metrics': return '📊';
+      case 'strength': return '💪';
       default: return <Calendar className="h-4 w-4" />;
     }
   };
@@ -90,6 +91,7 @@ export const LogHistory = ({ logs }: LogHistoryProps) => {
                 <SelectItem value="recovery">Recovery</SelectItem>
                 <SelectItem value="nutrition">Nutrition</SelectItem>
                 <SelectItem value="metrics">Metrics</SelectItem>
+                <SelectItem value="strength">Strength</SelectItem>
               </SelectContent>
             </Select>
             
@@ -106,7 +108,7 @@ export const LogHistory = ({ logs }: LogHistoryProps) => {
       {/* Stats Overview */}
       {logs.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {['workout', 'recovery', 'nutrition', 'metrics'].map(type => {
+          {['workout', 'recovery', 'nutrition', 'metrics', 'strength'].map(type => {
             const count = logs.filter(log => log.type === type).length;
             return (
               <Card key={type} className="bg-gradient-to-br from-card to-card/90">
@@ -187,11 +189,63 @@ export const LogHistory = ({ logs }: LogHistoryProps) => {
                                   BF: {log.structured.bodyFat}%
                                 </Badge>
                               )}
-                              {log.structured.sleep && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Sleep: {log.structured.sleep}h
-                                </Badge>
-                              )}
+                               {log.structured.sleep && (
+                                 <Badge variant="secondary" className="text-xs">
+                                   Sleep: {log.structured.sleep}h
+                                 </Badge>
+                               )}
+                               
+                               {/* New structured data */}
+                               {log.structured.nutrition && (
+                                 <>
+                                   {log.structured.nutrition.calories && (
+                                     <Badge variant="secondary" className="text-xs">
+                                       Cal: {log.structured.nutrition.calories}
+                                     </Badge>
+                                   )}
+                                   {log.structured.nutrition.protein && (
+                                     <Badge variant="secondary" className="text-xs">
+                                       P: {log.structured.nutrition.protein}g
+                                     </Badge>
+                                   )}
+                                 </>
+                               )}
+                               
+                               {log.structured.recovery && (
+                                 <>
+                                   {log.structured.recovery.hrv && (
+                                     <Badge variant="secondary" className="text-xs">
+                                       HRV: {log.structured.recovery.hrv}ms
+                                     </Badge>
+                                   )}
+                                   {log.structured.recovery.doms && (
+                                     <Badge variant="secondary" className="text-xs">
+                                       DOMS: {log.structured.recovery.doms}/10
+                                     </Badge>
+                                   )}
+                                 </>
+                               )}
+                               
+                               {log.structured.bodyMeasurements && (
+                                 <>
+                                   {log.structured.bodyMeasurements.weight && (
+                                     <Badge variant="secondary" className="text-xs">
+                                       Weight: {log.structured.bodyMeasurements.weight}kg
+                                     </Badge>
+                                   )}
+                                   {log.structured.bodyMeasurements.bodyFat && (
+                                     <Badge variant="secondary" className="text-xs">
+                                       BF: {log.structured.bodyMeasurements.bodyFat}%
+                                     </Badge>
+                                   )}
+                                 </>
+                               )}
+                               
+                               {log.structured.strengthTraining && (
+                                 <Badge variant="secondary" className="text-xs">
+                                   {log.structured.strengthTraining.exercises?.length || 0} exercises
+                                 </Badge>
+                               )}
                             </div>
                           )}
                           

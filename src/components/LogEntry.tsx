@@ -4,55 +4,229 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Trash2, Upload, FileText, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Zap, Upload, FileText, X } from 'lucide-react';
-import type { Log } from './FitnessCoach';
+import type { Log, NutritionData, BodyMeasurements, RecoveryData, StrengthTraining, Exercise, WorkoutSet } from './FitnessCoach';
 
 interface LogEntryProps {
   onSubmit: (log: Omit<Log, 'id' | 'timestamp'>) => void;
 }
 
+const generateFakeData = (): Omit<Log, 'id' | 'timestamp'>[] => {
+  const fakeData: Omit<Log, 'id' | 'timestamp'>[] = [];
+  
+  // Nutrition logs
+  fakeData.push({
+    type: 'nutrition',
+    content: 'Daily nutrition tracking - hitting protein goals',
+    structured: {
+      nutrition: {
+        calories: 2800,
+        carbs: 350,
+        protein: 180,
+        fat: 80
+      }
+    }
+  });
+
+  fakeData.push({
+    type: 'nutrition',
+    content: 'Post-workout meal timing',
+    structured: {
+      nutrition: {
+        calories: 3200,
+        carbs: 400,
+        protein: 200,
+        fat: 90
+      }
+    }
+  });
+
+  // Body measurements
+  fakeData.push({
+    type: 'metrics',
+    content: 'Weekly body measurements and progress photos',
+    structured: {
+      bodyMeasurements: {
+        weight: 78.5,
+        bodyFat: 12.5,
+        waist: 82,
+        leftBicep: 38,
+        rightBicep: 38.5
+      }
+    }
+  });
+
+  fakeData.push({
+    type: 'metrics',
+    content: 'Morning weigh-in - feeling lean',
+    structured: {
+      bodyMeasurements: {
+        weight: 77.8,
+        bodyFat: 11.8,
+        waist: 81,
+        leftBicep: 38.2,
+        rightBicep: 38.8
+      }
+    }
+  });
+
+  // Recovery data
+  fakeData.push({
+    type: 'recovery',
+    content: 'Morning recovery metrics - feeling great',
+    structured: {
+      recovery: {
+        hrv: 45,
+        restingHR: 58,
+        doms: 2
+      }
+    }
+  });
+
+  fakeData.push({
+    type: 'recovery',
+    content: 'Post-leg day recovery check',
+    structured: {
+      recovery: {
+        hrv: 38,
+        restingHR: 65,
+        doms: 6
+      }
+    }
+  });
+
+  // Strength training workouts
+  fakeData.push({
+    type: 'strength',
+    content: 'Push workout - chest and shoulders focus',
+    structured: {
+      strengthTraining: {
+        title: 'Push A - Delts & Chest',
+        date: '29/07/2025',
+        exercises: [
+          {
+            name: 'Shoulder Press - Isolateral',
+            sets: [
+              { reps: 5, weight: 27.5, rir: 0 },
+              { reps: 8, weight: 25, rir: 0.5 },
+              { reps: 8, weight: 25, rir: 1 },
+              { reps: 6, weight: 25, rir: 0 }
+            ],
+            notes: 'RIR: 0,0.5,1,0'
+          },
+          {
+            name: 'Incline Bench Press (Dumbbell)',
+            sets: [
+              { reps: 10, weight: 24, rir: 2 },
+              { reps: 10, weight: 26, rir: 1.5 },
+              { reps: 10, weight: 26, rir: 1.5 },
+              { reps: 11, weight: 26, rir: 0 }
+            ],
+            notes: 'RIR: 2,1.5,1.5,0'
+          },
+          {
+            name: 'Cable Crossover',
+            sets: [
+              { reps: 12, weight: 35, rir: 1 },
+              { reps: 12, weight: 35, rir: 1 },
+              { reps: 12, weight: 35, rir: 0 }
+            ],
+            notes: 'RIR: 1,1,0'
+          }
+        ],
+        workoutNotes: 'Working sets per group: Delts - 7, Chest - 10, Tricep - 8'
+      }
+    }
+  });
+
+  fakeData.push({
+    type: 'strength',
+    content: 'Pull workout - back and biceps',
+    structured: {
+      strengthTraining: {
+        title: 'Pull A - Back & Biceps',
+        date: '27/07/2025',
+        exercises: [
+          {
+            name: 'Lat Pulldown',
+            sets: [
+              { reps: 8, weight: 70, rir: 1 },
+              { reps: 10, weight: 65, rir: 1 },
+              { reps: 12, weight: 60, rir: 0 }
+            ],
+            notes: 'RIR: 1,1,0'
+          },
+          {
+            name: 'Barbell Row',
+            sets: [
+              { reps: 6, weight: 80, rir: 0 },
+              { reps: 8, weight: 75, rir: 1 },
+              { reps: 10, weight: 70, rir: 0 }
+            ],
+            notes: 'RIR: 0,1,0'
+          }
+        ],
+        workoutNotes: 'Great session, felt strong on all movements'
+      }
+    }
+  });
+
+  return fakeData;
+};
+
 export const LogEntry = ({ onSubmit }: LogEntryProps) => {
   const { toast } = useToast();
-  const [logType, setLogType] = useState<'workout' | 'nutrition' | 'recovery' | 'metrics'>('recovery');
-  
-  // Structured form state
-  const [doms, setDoms] = useState([3]);
-  const [weight, setWeight] = useState('');
-  const [waist, setWaist] = useState('');
-  const [bodyFat, setBodyFat] = useState('');
-  const [sleep, setSleep] = useState('');
-  const [notes, setNotes] = useState('');
+  const [activeTab, setActiveTab] = useState('quick');
   
   // Quick log state
-  const [quickLog, setQuickLog] = useState('');
+  const [quickContent, setQuickContent] = useState('');
+  const [logType, setLogType] = useState<Log['type']>('workout');
+  
+  // Nutrition state
+  const [nutrition, setNutrition] = useState<NutritionData>({});
+  
+  // Body measurements state
+  const [bodyMeasurements, setBodyMeasurements] = useState<BodyMeasurements>({});
+  
+  // Recovery state
+  const [recovery, setRecovery] = useState<RecoveryData>({});
+  
+  // Strength training state
+  const [strengthTraining, setStrengthTraining] = useState<StrengthTraining>({
+    title: '',
+    date: '',
+    exercises: [],
+    workoutNotes: ''
+  });
   
   // File upload state
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    const validFiles = files.filter(file => {
-      const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'text/plain'];
-      const maxSize = 10 * 1024 * 1024; // 10MB
+    const selectedFiles = Array.from(event.target.files || []);
+    
+    // Validate file types and sizes
+    const validFiles = selectedFiles.filter(file => {
+      const isValidType = ['application/pdf', 'image/jpeg', 'image/png', 'text/plain'].includes(file.type);
+      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
       
-      if (!validTypes.includes(file.type)) {
+      if (!isValidType) {
         toast({
           title: "Invalid file type",
-          description: "Please upload PDF, JPG, PNG, or TXT files only.",
+          description: `${file.name} is not a supported file type`,
           variant: "destructive"
         });
         return false;
       }
       
-      if (file.size > maxSize) {
+      if (!isValidSize) {
         toast({
           title: "File too large",
-          description: "Files must be smaller than 10MB.",
+          description: `${file.name} exceeds 10MB limit`,
           variant: "destructive"
         });
         return false;
@@ -61,11 +235,11 @@ export const LogEntry = ({ onSubmit }: LogEntryProps) => {
       return true;
     });
     
-    setUploadedFiles(prev => [...prev, ...validFiles]);
+    setFiles(prev => [...prev, ...validFiles]);
   };
 
   const removeFile = (index: number) => {
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+    setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -78,344 +252,549 @@ export const LogEntry = ({ onSubmit }: LogEntryProps) => {
   };
 
   const handleQuickLog = async () => {
-    if (!quickLog.trim() && uploadedFiles.length === 0) return;
-    
-    let attachments: any[] = [];
-    
-    if (uploadedFiles.length > 0) {
-      try {
-        attachments = await Promise.all(
-          uploadedFiles.map(async file => ({
-            fileName: file.name,
-            fileType: file.type,
-            fileSize: file.size,
-            content: await fileToBase64(file)
-          }))
-        );
-      } catch (error) {
-        toast({
-          title: "File processing error",
-          description: "Failed to process uploaded files.",
-          variant: "destructive"
-        });
-        return;
-      }
+    if (!quickContent.trim()) {
+      toast({
+        title: "Content required",
+        description: "Please enter some content for your log",
+        variant: "destructive"
+      });
+      return;
     }
-    
-    onSubmit({
-      type: 'recovery',
-      content: quickLog || 'File upload',
-      attachments: attachments.length > 0 ? attachments : undefined
-    });
-    
-    setQuickLog('');
-    setUploadedFiles([]);
-    toast({
-      title: "Log saved!",
-      description: `Your ${attachments.length > 0 ? 'log with files' : 'quick log'} has been recorded.`,
-    });
-  };
 
-  const handleStructuredSubmit = () => {
-    const structured = {
-      doms: doms[0],
-      weight: weight ? parseFloat(weight) : undefined,
-      waist: waist ? parseFloat(waist) : undefined,
-      bodyFat: bodyFat ? parseFloat(bodyFat) : undefined,
-      sleep: sleep ? parseFloat(sleep) : undefined,
-      notes: notes || undefined,
-    };
-
-    let content = `DOMS: ${doms[0]}/10`;
-    if (weight) content += `, Weight: ${weight}kg`;
-    if (waist) content += `, Waist: ${waist}cm`;
-    if (bodyFat) content += `, Body Fat: ${bodyFat}%`;
-    if (sleep) content += `, Sleep: ${sleep}h`;
-    if (notes) content += `, Notes: ${notes}`;
+    const attachments = await Promise.all(
+      files.map(async (file) => ({
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        content: await fileToBase64(file)
+      }))
+    );
 
     onSubmit({
       type: logType,
-      content,
-      structured,
+      content: quickContent,
+      attachments: attachments.length > 0 ? attachments : undefined
     });
 
-    // Reset form
-    setDoms([3]);
-    setWeight('');
-    setWaist('');
-    setBodyFat('');
-    setSleep('');
-    setNotes('');
+    setQuickContent('');
+    setFiles([]);
+    toast({
+      title: "Log submitted",
+      description: "Your log has been recorded successfully"
+    });
+  };
+
+  const handleStructuredSubmit = async (type: Log['type'], data: any, description: string) => {
+    const attachments = await Promise.all(
+      files.map(async (file) => ({
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        content: await fileToBase64(file)
+      }))
+    );
+
+    onSubmit({
+      type,
+      content: description,
+      structured: data,
+      attachments: attachments.length > 0 ? attachments : undefined
+    });
+
+    // Reset forms
+    setNutrition({});
+    setBodyMeasurements({});
+    setRecovery({});
+    setStrengthTraining({ title: '', date: '', exercises: [], workoutNotes: '' });
+    setFiles([]);
     
     toast({
-      title: "Structured log saved!",
-      description: "Your detailed metrics have been recorded.",
+      title: "Log submitted",
+      description: "Your structured log has been recorded successfully"
+    });
+  };
+
+  const addExercise = () => {
+    setStrengthTraining(prev => ({
+      ...prev,
+      exercises: [...prev.exercises, { name: '', sets: [], notes: '' }]
+    }));
+  };
+
+  const updateExercise = (index: number, exercise: Exercise) => {
+    setStrengthTraining(prev => ({
+      ...prev,
+      exercises: prev.exercises.map((ex, i) => i === index ? exercise : ex)
+    }));
+  };
+
+  const removeExercise = (index: number) => {
+    setStrengthTraining(prev => ({
+      ...prev,
+      exercises: prev.exercises.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addSet = (exerciseIndex: number) => {
+    const exercise = strengthTraining.exercises[exerciseIndex];
+    const updatedExercise = {
+      ...exercise,
+      sets: [...exercise.sets, { reps: 0, weight: 0, rir: 0, notes: '' }]
+    };
+    updateExercise(exerciseIndex, updatedExercise);
+  };
+
+  const updateSet = (exerciseIndex: number, setIndex: number, set: WorkoutSet) => {
+    const exercise = strengthTraining.exercises[exerciseIndex];
+    const updatedExercise = {
+      ...exercise,
+      sets: exercise.sets.map((s, i) => i === setIndex ? set : s)
+    };
+    updateExercise(exerciseIndex, updatedExercise);
+  };
+
+  const removeSet = (exerciseIndex: number, setIndex: number) => {
+    const exercise = strengthTraining.exercises[exerciseIndex];
+    const updatedExercise = {
+      ...exercise,
+      sets: exercise.sets.filter((_, i) => i !== setIndex)
+    };
+    updateExercise(exerciseIndex, updatedExercise);
+  };
+
+  const generateFakeDataHandler = () => {
+    const fakeData = generateFakeData();
+    fakeData.forEach(log => onSubmit(log));
+    toast({
+      title: "Fake data generated",
+      description: `Added ${fakeData.length} sample logs to your history`
     });
   };
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="quick" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-card">
-          <TabsTrigger value="quick">Quick Log</TabsTrigger>
-          <TabsTrigger value="upload">File Upload</TabsTrigger>
-          <TabsTrigger value="structured">Structured Entry</TabsTrigger>
-        </TabsList>
+      {/* Generate Fake Data Button */}
+      <Card>
+        <CardContent className="p-4">
+          <Button 
+            onClick={generateFakeDataHandler}
+            variant="outline"
+            className="w-full"
+          >
+            🎲 Generate Sample Data (for testing)
+          </Button>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="quick" className="space-y-4">
-          <Card className="bg-gradient-to-br from-card via-card to-card/90">
-            <CardHeader>
-              <div className="flex items-center space-x-2">
-                <Zap className="h-5 w-5 text-accent" />
-                <CardTitle className="text-lg">Quick Log</CardTitle>
+      <Card className="bg-gradient-to-br from-card via-card to-card/90">
+        <CardHeader>
+          <CardTitle className="text-xl">Add Training Log</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Log your training data using structured forms or quick text entry
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-6">
+              <TabsTrigger value="quick">Quick</TabsTrigger>
+              <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
+              <TabsTrigger value="body">Body</TabsTrigger>
+              <TabsTrigger value="recovery">Recovery</TabsTrigger>
+              <TabsTrigger value="strength">Strength</TabsTrigger>
+              <TabsTrigger value="files">Files</TabsTrigger>
+            </TabsList>
+
+            {/* Quick Log */}
+            <TabsContent value="quick" className="space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="logType">Log Type</Label>
+                  <Select value={logType} onValueChange={(value: Log['type']) => setLogType(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="workout">Workout</SelectItem>
+                      <SelectItem value="nutrition">Nutrition</SelectItem>
+                      <SelectItem value="recovery">Recovery</SelectItem>
+                      <SelectItem value="metrics">Metrics</SelectItem>
+                      <SelectItem value="strength">Strength Training</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="content">Content</Label>
+                  <Textarea
+                    id="content"
+                    placeholder="e.g., DOMS 3, 71.4kg, 6.5h sleep, sore triceps"
+                    value={quickContent}
+                    onChange={(e) => setQuickContent(e.target.value)}
+                    rows={4}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Natural language parsing enabled - mention DOMS, weight, waist, sleep, etc.
+                  </p>
+                </div>
+
+                <Button onClick={handleQuickLog} className="w-full">
+                  Submit Quick Log
+                </Button>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Natural language entry - just type what you want to log
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="quick-log">Log Entry</Label>
-                <Textarea
-                  id="quick-log"
-                  value={quickLog}
-                  onChange={(e) => setQuickLog(e.target.value)}
-                  placeholder="e.g., DOMS 3, 71.4kg, 6.5h sleep, sore triceps"
-                  className="min-h-[100px] bg-input border-border/50"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Example formats:</Label>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="text-xs">DOMS 3, 71.4kg, 6.5h sleep</Badge>
-                  <Badge variant="outline" className="text-xs">Waist 85cm, feeling lean</Badge>
-                  <Badge variant="outline" className="text-xs">Body fat 12%, great progress</Badge>
-                  <Badge variant="outline" className="text-xs">Chest day, 5x5 bench</Badge>
+            </TabsContent>
+
+            {/* Nutrition */}
+            <TabsContent value="nutrition" className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="calories">Calories</Label>
+                  <Input
+                    id="calories"
+                    type="number"
+                    placeholder="2500"
+                    value={nutrition.calories || ''}
+                    onChange={(e) => setNutrition(prev => ({ ...prev, calories: parseFloat(e.target.value) || undefined }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="carbs">Carbs (g)</Label>
+                  <Input
+                    id="carbs"
+                    type="number"
+                    placeholder="300"
+                    value={nutrition.carbs || ''}
+                    onChange={(e) => setNutrition(prev => ({ ...prev, carbs: parseFloat(e.target.value) || undefined }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="protein">Protein (g)</Label>
+                  <Input
+                    id="protein"
+                    type="number"
+                    placeholder="150"
+                    value={nutrition.protein || ''}
+                    onChange={(e) => setNutrition(prev => ({ ...prev, protein: parseFloat(e.target.value) || undefined }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="fat">Fat (g)</Label>
+                  <Input
+                    id="fat"
+                    type="number"
+                    placeholder="80"
+                    value={nutrition.fat || ''}
+                    onChange={(e) => setNutrition(prev => ({ ...prev, fat: parseFloat(e.target.value) || undefined }))}
+                  />
                 </div>
               </div>
-              
               <Button 
-                onClick={handleQuickLog}
-                disabled={!quickLog.trim() && uploadedFiles.length === 0}
-                className="w-full bg-gradient-to-r from-accent to-accent-glow hover:from-accent-glow hover:to-accent"
+                onClick={() => handleStructuredSubmit('nutrition', { nutrition }, 'Daily nutrition tracking')}
+                className="w-full"
+                disabled={!nutrition.calories && !nutrition.carbs && !nutrition.protein && !nutrition.fat}
               >
-                <Save className="h-4 w-4 mr-2" />
-                Save Quick Log
+                Submit Nutrition Log
               </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            </TabsContent>
 
-        <TabsContent value="upload" className="space-y-4">
-          <Card className="bg-gradient-to-br from-card via-card to-card/90">
-            <CardHeader>
-              <div className="flex items-center space-x-2">
-                <Upload className="h-5 w-5 text-accent" />
-                <CardTitle className="text-lg">File Upload</CardTitle>
+            {/* Body Measurements */}
+            <TabsContent value="body" className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="weight">Weight (kg)</Label>
+                  <Input
+                    id="weight"
+                    type="number"
+                    step="0.1"
+                    placeholder="75.5"
+                    value={bodyMeasurements.weight || ''}
+                    onChange={(e) => setBodyMeasurements(prev => ({ ...prev, weight: parseFloat(e.target.value) || undefined }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="bodyFat">Body Fat (%)</Label>
+                  <Input
+                    id="bodyFat"
+                    type="number"
+                    step="0.1"
+                    placeholder="12.5"
+                    value={bodyMeasurements.bodyFat || ''}
+                    onChange={(e) => setBodyMeasurements(prev => ({ ...prev, bodyFat: parseFloat(e.target.value) || undefined }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="waist">Waist (cm)</Label>
+                  <Input
+                    id="waist"
+                    type="number"
+                    step="0.1"
+                    placeholder="85.0"
+                    value={bodyMeasurements.waist || ''}
+                    onChange={(e) => setBodyMeasurements(prev => ({ ...prev, waist: parseFloat(e.target.value) || undefined }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="leftBicep">Left Bicep (cm)</Label>
+                  <Input
+                    id="leftBicep"
+                    type="number"
+                    step="0.1"
+                    placeholder="38.0"
+                    value={bodyMeasurements.leftBicep || ''}
+                    onChange={(e) => setBodyMeasurements(prev => ({ ...prev, leftBicep: parseFloat(e.target.value) || undefined }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="rightBicep">Right Bicep (cm)</Label>
+                  <Input
+                    id="rightBicep"
+                    type="number"
+                    step="0.1"
+                    placeholder="38.5"
+                    value={bodyMeasurements.rightBicep || ''}
+                    onChange={(e) => setBodyMeasurements(prev => ({ ...prev, rightBicep: parseFloat(e.target.value) || undefined }))}
+                  />
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Upload DEXA scans, PDFs, reports, or other fitness-related documents
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="file-upload">Choose Files</Label>
-                <Input
-                  id="file-upload"
-                  type="file"
-                  multiple
-                  accept=".pdf,.jpg,.jpeg,.png,.txt"
-                  onChange={handleFileUpload}
-                  className="bg-input border-border/50"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Accepted formats: PDF, JPG, PNG, TXT • Max size: 10MB per file
-                </p>
-              </div>
+              <Button 
+                onClick={() => handleStructuredSubmit('metrics', { bodyMeasurements }, 'Body measurements tracking')}
+                className="w-full"
+                disabled={!bodyMeasurements.weight && !bodyMeasurements.bodyFat && !bodyMeasurements.waist && !bodyMeasurements.leftBicep && !bodyMeasurements.rightBicep}
+              >
+                Submit Body Measurements
+              </Button>
+            </TabsContent>
 
-              {uploadedFiles.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Uploaded Files ({uploadedFiles.length})</Label>
+            {/* Recovery */}
+            <TabsContent value="recovery" className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="hrv">HRV (ms)</Label>
+                  <Input
+                    id="hrv"
+                    type="number"
+                    placeholder="45"
+                    value={recovery.hrv || ''}
+                    onChange={(e) => setRecovery(prev => ({ ...prev, hrv: parseFloat(e.target.value) || undefined }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="restingHR">Resting HR (bpm)</Label>
+                  <Input
+                    id="restingHR"
+                    type="number"
+                    placeholder="60"
+                    value={recovery.restingHR || ''}
+                    onChange={(e) => setRecovery(prev => ({ ...prev, restingHR: parseFloat(e.target.value) || undefined }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="doms">DOMS (1-10)</Label>
+                  <Input
+                    id="doms"
+                    type="number"
+                    min="1"
+                    max="10"
+                    placeholder="3"
+                    value={recovery.doms || ''}
+                    onChange={(e) => setRecovery(prev => ({ ...prev, doms: parseFloat(e.target.value) || undefined }))}
+                  />
+                </div>
+              </div>
+              <Button 
+                onClick={() => handleStructuredSubmit('recovery', { recovery }, 'Recovery metrics tracking')}
+                className="w-full"
+                disabled={!recovery.hrv && !recovery.restingHR && !recovery.doms}
+              >
+                Submit Recovery Data
+              </Button>
+            </TabsContent>
+
+            {/* Strength Training */}
+            <TabsContent value="strength" className="space-y-4">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="workoutTitle">Workout Title</Label>
+                    <Input
+                      id="workoutTitle"
+                      placeholder="Push A - Delts & Chest"
+                      value={strengthTraining.title}
+                      onChange={(e) => setStrengthTraining(prev => ({ ...prev, title: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="workoutDate">Date</Label>
+                    <Input
+                      id="workoutDate"
+                      type="date"
+                      value={strengthTraining.date}
+                      onChange={(e) => setStrengthTraining(prev => ({ ...prev, date: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                {/* Exercises */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Exercises</Label>
+                    <Button onClick={addExercise} size="sm" variant="outline">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Exercise
+                    </Button>
+                  </div>
+
+                  {strengthTraining.exercises.map((exercise, exerciseIndex) => (
+                    <Card key={exerciseIndex} className="border-border/50">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Input
+                            placeholder="Exercise name"
+                            value={exercise.name}
+                            onChange={(e) => updateExercise(exerciseIndex, { ...exercise, name: e.target.value })}
+                            className="flex-1 mr-2"
+                          />
+                          <Button
+                            onClick={() => removeExercise(exerciseIndex)}
+                            size="sm"
+                            variant="ghost"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        {/* Sets */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm">Sets</Label>
+                            <Button
+                              onClick={() => addSet(exerciseIndex)}
+                              size="sm"
+                              variant="outline"
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Set
+                            </Button>
+                          </div>
+
+                          {exercise.sets.map((set, setIndex) => (
+                            <div key={setIndex} className="grid grid-cols-5 gap-2">
+                              <Input
+                                type="number"
+                                placeholder="Reps"
+                                value={set.reps || ''}
+                                onChange={(e) => updateSet(exerciseIndex, setIndex, { ...set, reps: parseInt(e.target.value) || 0 })}
+                              />
+                              <Input
+                                type="number"
+                                step="0.5"
+                                placeholder="Weight"
+                                value={set.weight || ''}
+                                onChange={(e) => updateSet(exerciseIndex, setIndex, { ...set, weight: parseFloat(e.target.value) || 0 })}
+                              />
+                              <Input
+                                type="number"
+                                step="0.5"
+                                placeholder="RIR"
+                                value={set.rir || ''}
+                                onChange={(e) => updateSet(exerciseIndex, setIndex, { ...set, rir: parseFloat(e.target.value) || undefined })}
+                              />
+                              <Input
+                                placeholder="Notes"
+                                value={set.notes || ''}
+                                onChange={(e) => updateSet(exerciseIndex, setIndex, { ...set, notes: e.target.value })}
+                              />
+                              <Button
+                                onClick={() => removeSet(exerciseIndex, setIndex)}
+                                size="sm"
+                                variant="ghost"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div>
+                          <Label className="text-sm">Exercise Notes</Label>
+                          <Textarea
+                            placeholder="RIR: 2,1,0"
+                            value={exercise.notes || ''}
+                            onChange={(e) => updateExercise(exerciseIndex, { ...exercise, notes: e.target.value })}
+                            rows={2}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                <div>
+                  <Label htmlFor="workoutNotes">Workout Notes</Label>
+                  <Textarea
+                    id="workoutNotes"
+                    placeholder="Working sets per group: Delts - 7, Chest - 10, Tricep - 8"
+                    value={strengthTraining.workoutNotes}
+                    onChange={(e) => setStrengthTraining(prev => ({ ...prev, workoutNotes: e.target.value }))}
+                    rows={3}
+                  />
+                </div>
+
+                <Button 
+                  onClick={() => handleStructuredSubmit('strength', { strengthTraining }, `${strengthTraining.title} workout`)}
+                  className="w-full"
+                  disabled={!strengthTraining.title || strengthTraining.exercises.length === 0}
+                >
+                  Submit Strength Training
+                </Button>
+              </div>
+            </TabsContent>
+
+            {/* File Upload */}
+            <TabsContent value="files" className="space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="fileUpload">Upload Files</Label>
+                  <Input
+                    id="fileUpload"
+                    type="file"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png,.txt"
+                    onChange={handleFileUpload}
+                    className="cursor-pointer"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Supports: PDF, JPG, PNG, TXT (max 10MB each)
+                  </p>
+                </div>
+
+                {files.length > 0 && (
                   <div className="space-y-2">
-                    {uploadedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg border border-border/50">
+                    <Label>Selected Files ({files.length})</Label>
+                    {files.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-muted rounded border">
                         <div className="flex items-center space-x-2">
                           <FileText className="h-4 w-4 text-accent" />
-                          <div>
-                            <p className="text-sm font-medium">{file.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {(file.size / 1024 / 1024).toFixed(2)} MB • {file.type}
-                            </p>
-                          </div>
+                          <span className="text-sm font-medium">{file.name}</span>
+                          <Badge variant="secondary" className="text-xs">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                          </Badge>
                         </div>
                         <Button
-                          variant="ghost"
-                          size="sm"
                           onClick={() => removeFile(index)}
-                          className="h-8 w-8 p-0"
+                          size="sm"
+                          variant="ghost"
                         >
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="upload-notes">Notes (Optional)</Label>
-                <Textarea
-                  id="upload-notes"
-                  value={quickLog}
-                  onChange={(e) => setQuickLog(e.target.value)}
-                  placeholder="Add context about these files... (e.g., 'DEXA scan from today', 'Lab results showing improvement')"
-                  className="min-h-[80px] bg-input border-border/50"
-                />
+                )}
               </div>
-              
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Common file types:</Label>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="text-xs">DEXA scans</Badge>
-                  <Badge variant="outline" className="text-xs">Blood work</Badge>
-                  <Badge variant="outline" className="text-xs">Body composition</Badge>
-                  <Badge variant="outline" className="text-xs">Training logs</Badge>
-                </div>
-              </div>
-
-              <Button 
-                onClick={handleQuickLog}
-                disabled={uploadedFiles.length === 0}
-                className="w-full bg-gradient-to-r from-accent to-accent-glow hover:from-accent-glow hover:to-accent"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Files {uploadedFiles.length > 0 && `(${uploadedFiles.length})`}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="structured" className="space-y-4">
-          <Card className="bg-gradient-to-br from-card via-card to-card/90">
-            <CardHeader>
-              <CardTitle className="text-lg">Structured Entry</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Detailed metrics for precise tracking and analysis
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="log-type">Log Type</Label>
-                <Select value={logType} onValueChange={(value: any) => setLogType(value)}>
-                  <SelectTrigger className="bg-input border-border/50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="recovery">Recovery & Metrics</SelectItem>
-                    <SelectItem value="workout">Workout</SelectItem>
-                    <SelectItem value="nutrition">Nutrition</SelectItem>
-                    <SelectItem value="metrics">Body Metrics</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>DOMS Level: {doms[0]}/10</Label>
-                  <div className="px-2">
-                    <Slider
-                      value={doms}
-                      onValueChange={setDoms}
-                      max={10}
-                      min={1}
-                      step={1}
-                      className="w-full"
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>No soreness</span>
-                    <span>Extreme soreness</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="weight">Weight (kg)</Label>
-                    <Input
-                      id="weight"
-                      type="number"
-                      step="0.1"
-                      value={weight}
-                      onChange={(e) => setWeight(e.target.value)}
-                      placeholder="71.4"
-                      className="bg-input border-border/50"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="waist">Waist (cm)</Label>
-                    <Input
-                      id="waist"
-                      type="number"
-                      step="0.1"
-                      value={waist}
-                      onChange={(e) => setWaist(e.target.value)}
-                      placeholder="85.0"
-                      className="bg-input border-border/50"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="bodyFat">Body Fat (%)</Label>
-                    <Input
-                      id="bodyFat"
-                      type="number"
-                      step="0.1"
-                      value={bodyFat}
-                      onChange={(e) => setBodyFat(e.target.value)}
-                      placeholder="12.5"
-                      className="bg-input border-border/50"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="sleep">Sleep (hours)</Label>
-                    <Input
-                      id="sleep"
-                      type="number"
-                      step="0.5"
-                      value={sleep}
-                      onChange={(e) => setSleep(e.target.value)}
-                      placeholder="7.5"
-                      className="bg-input border-border/50"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Additional Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Feeling strong today, triceps still sore from Monday..."
-                  className="bg-input border-border/50"
-                />
-              </div>
-
-              <Button 
-                onClick={handleStructuredSubmit}
-                className="w-full bg-gradient-to-r from-primary to-primary-glow hover:from-primary-glow hover:to-primary"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save Structured Entry
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };

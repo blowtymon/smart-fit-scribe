@@ -8,19 +8,66 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings, Dumbbell, MessageSquare, History } from 'lucide-react';
 import { memoryService } from '@/services/memory';
 
+export interface NutritionData {
+  calories?: number;
+  carbs?: number;
+  protein?: number;
+  fat?: number;
+}
+
+export interface BodyMeasurements {
+  weight?: number;
+  bodyFat?: number;
+  waist?: number;
+  leftBicep?: number;
+  rightBicep?: number;
+}
+
+export interface RecoveryData {
+  hrv?: number;
+  restingHR?: number;
+  doms?: number;
+}
+
+export interface WorkoutSet {
+  reps: number;
+  weight: number;
+  rir?: number;
+  notes?: string;
+}
+
+export interface Exercise {
+  name: string;
+  sets: WorkoutSet[];
+  notes?: string;
+}
+
+export interface StrengthTraining {
+  title: string;
+  date: string;
+  exercises: Exercise[];
+  workoutNotes?: string;
+}
+
+export interface StructuredData {
+  nutrition?: NutritionData;
+  bodyMeasurements?: BodyMeasurements;
+  recovery?: RecoveryData;
+  strengthTraining?: StrengthTraining;
+  // Legacy fields for backward compatibility
+  doms?: number;
+  weight?: number;
+  waist?: number;
+  bodyFat?: number;
+  sleep?: number;
+}
+
 export interface Log {
   id: string;
   timestamp: Date;
-  type: 'workout' | 'nutrition' | 'recovery' | 'metrics';
+  type: 'workout' | 'nutrition' | 'recovery' | 'metrics' | 'strength';
   content: string;
-  structured?: {
-    doms?: number;
-    weight?: number;
-    waist?: number;
-    sleep?: number;
-    bodyFat?: number;
-    notes?: string;
-  };
+  structured?: StructuredData;
   attachments?: {
     fileName: string;
     fileType: string;
