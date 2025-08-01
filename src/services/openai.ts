@@ -94,7 +94,7 @@ Respond as if you're analyzing data in real-time, connecting patterns from their
     return messages
       .slice(-10) // Keep last 10 messages for context
       .map(msg => ({
-        role: msg.role,
+        role: msg.isUser ? 'user' : 'assistant',
         content: msg.content
       }));
   }

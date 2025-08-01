@@ -1,16 +1,16 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Bot, User, Loader2, Search, Database } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Send, Bot, User, Loader2, Wifi, WifiOff } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { format } from 'date-fns';
 import { openAIService } from '@/services/openai';
 import { searchService } from '@/services/search';
-import { memoryService } from '@/services/memory';
-import type { ChatMessage, Log, CoachSettings } from './FitnessCoach';
+import { ChatMessage, Log, CoachSettings } from './FitnessCoach';
 
 interface ChatInterfaceProps {
   messages: ChatMessage[];
@@ -19,318 +19,190 @@ interface ChatInterfaceProps {
   settings: CoachSettings;
 }
 
-export const ChatInterface = ({ messages, onSendMessage, logs, settings }: ChatInterfaceProps) => {
+export function ChatInterface({ messages, onSendMessage, logs, settings }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollElement) {
+        scrollElement.scrollTop = scrollElement.scrollHeight;
+      }
     }
   }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || loading) return;
 
     const messageContent = input.trim();
     setInput('');
-    setIsLoading(true);
+    setLoading(true);
 
     try {
-      // Check if we have OpenAI API key (in a real app, this would be more secure)
-      const apiKey = localStorage.getItem('openai_api_key');
+      let aiResponse = '';
       
-      if (apiKey) {
-        // Initialize OpenAI service
+      if (settings.apiKey) {
         openAIService.initialize({
-          apiKey,
+          apiKey: settings.apiKey,
           model: settings.model,
           temperature: settings.temperature
         });
 
-        let searchResults = '';
-        
-        // Perform web search if enabled and query seems research-related
-        if (settings.searchEnabled && isResearchQuery(messageContent)) {
+        if (settings.webSearchEnabled && messageContent.toLowerCase().includes('research')) {
           try {
-            const results = await searchService.searchFitnessResearch({
-              query: messageContent
-            });
-            searchResults = await searchService.summarizeResearch(results);
-          } catch (error) {
-            console.error('Search error:', error);
+            const searchResults = await searchService.search(messageContent);
+            aiResponse = await openAIService.generateResponse(messages, logs, searchResults);
+          } catch {
+            aiResponse = await openAIService.generateResponse(messages, logs);
           }
+        } else {
+          aiResponse = await openAIService.generateResponse(messages, logs);
         }
-
-        // Generate AI response
-        const aiResponse = await openAIService.generateResponse(
-          messages,
-          logs,
-          searchResults
-        );
-        
-        onSendMessage(messageContent, aiResponse);
       } else {
-        // Fallback response when no API key
-        const fallbackResponse = generateFallbackResponse(messageContent, logs);
-        onSendMessage(messageContent, fallbackResponse);
+        aiResponse = "I'd love to give you personalized advice! To unlock my full potential, please add your OpenAI API key in the Settings tab.";
       }
+
+      onSendMessage(messageContent, aiResponse);
     } catch (error) {
-      console.error('Chat error:', error);
-      const errorResponse = "I apologize, but I encountered an error. Please check your API configuration in settings.";
-      onSendMessage(messageContent, errorResponse);
+      console.error('Error generating response:', error);
+      onSendMessage(messageContent, "Sorry, I encountered an error. Please try again.");
     } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const isResearchQuery = (query: string): boolean => {
-    const researchKeywords = [
-      'research', 'study', 'studies', 'evidence', 'science', 'latest',
-      'should i', 'is it better', 'what does research say', 'according to'
-    ];
-    return researchKeywords.some(keyword => 
-      query.toLowerCase().includes(keyword)
-    );
-  };
-
-  const generateFallbackResponse = (query: string, logs: Log[]): string => {
-    // Simple pattern matching for common queries
-    const lowerQuery = query.toLowerCase();
-    
-    // Handle date-specific queries like "What was my waist last Monday?"
-    if (lowerQuery.includes('last monday') || lowerQuery.includes('monday')) {
-      const lastMonday = getLastMonday();
-      const mondayLogs = logs.filter(log => isSameDay(log.timestamp, lastMonday));
-      
-      if (lowerQuery.includes('waist')) {
-        const waistLog = mondayLogs.find(log => log.structured?.waist);
-        if (waistLog) {
-          return `📏 **Waist Measurement**\n\nLast Monday (${lastMonday.toLocaleDateString()}): \`${waistLog.structured?.waist}cm\``;
-        }
-        return `📏 **Waist Measurement**\n\nNo waist measurement found for last Monday (${lastMonday.toLocaleDateString()})`;
-      }
-      
-      if (lowerQuery.includes('weight')) {
-        const weightLog = mondayLogs.find(log => log.structured?.weight);
-        if (weightLog) {
-          return `⚖️ **Weight Tracking**\n\nLast Monday (${lastMonday.toLocaleDateString()}): \`${weightLog.structured?.weight}kg\``;
-        }
-      }
-    }
-
-    // Handle DOMS trend queries
-    if (lowerQuery.includes('doms') && (lowerQuery.includes('week') || lowerQuery.includes('changed'))) {
-      const weeklyDoms = logs
-        .filter(log => log.structured?.doms !== undefined && isWithinDays(log.timestamp, 7))
-        .map(log => log.structured!.doms!)
-        .sort();
-      
-      if (weeklyDoms.length > 0) {
-        const avgDoms = weeklyDoms.reduce((sum, val) => sum + val, 0) / weeklyDoms.length;
-        const trend = weeklyDoms.length > 1 ? 
-          (weeklyDoms[weeklyDoms.length - 1] > weeklyDoms[0] ? 'increasing' : 'decreasing') : 'stable';
-        
-        return `📊 **DOMS Trend This Week**\n\nAverage: \`${avgDoms.toFixed(1)}/10\`\nTrend: ${trend}\nReadings: ${weeklyDoms.join(', ')}\n\n${avgDoms <= 3 ? '✅ Good recovery pattern' : '⚠️ High soreness - consider recovery focus'}`;
-      }
-    }
-    
-    if (lowerQuery.includes('doms')) {
-      const recentDoms = logs
-        .filter(log => log.structured?.doms !== undefined)
-        .slice(0, 3);
-      
-      if (recentDoms.length > 0) {
-        const avgDoms = recentDoms.reduce((sum, log) => sum + (log.structured?.doms || 0), 0) / recentDoms.length;
-        return `📊 **DOMS Analysis**\n\nYour recent DOMS average: \`${avgDoms.toFixed(1)}/10\`\n\n${avgDoms <= 3 ? '✅ Good recovery - ready for intensity' : '⚠️ Consider lighter training or extra recovery'}`;
-      }
-    }
-    
-    if (lowerQuery.includes('weight') || lowerQuery.includes('waist')) {
-      const recentWeights = logs
-        .filter(log => log.structured?.weight !== undefined)
-        .slice(0, 3);
-      
-      const recentWaist = logs
-        .filter(log => log.structured?.waist !== undefined)
-        .slice(0, 3);
-      
-      let response = '';
-      if (recentWeights.length > 0) {
-        const latestWeight = recentWeights[0].structured?.weight;
-        response += `⚖️ **Weight:** \`${latestWeight}kg\`\n`;
-      }
-      if (recentWaist.length > 0) {
-        const latestWaist = recentWaist[0].structured?.waist;
-        response += `📏 **Waist:** \`${latestWaist}cm\`\n`;
-      }
-      
-      if (response) {
-        return response + '\nConfigure your OpenAI API key in settings for detailed analysis and trends.';
-      }
-    }
-    
-    return `🤖 **AI Coach Response**\n\nI see you asked: "${query}"\n\nFor personalized, science-backed coaching with real-time research, please:\n\n1. Add your **OpenAI API key** in Settings\n2. Enable **web search** for latest research\n3. Continue logging your training data\n\nI'll then provide detailed analysis based on your complete training history!`;
-  };
-
-  const getLastMonday = (): Date => {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0 = Sunday
-    const lastMonday = new Date(today);
-    lastMonday.setDate(today.getDate() - daysToMonday - 7);
-    return lastMonday;
-  };
-
-  const isSameDay = (date1: Date, date2: Date): boolean => {
-    return date1.toDateString() === date2.toDateString();
-  };
-
-  const isWithinDays = (date: Date, days: number): boolean => {
-    const now = new Date();
-    const diffTime = now.getTime() - date.getTime();
-    const diffDays = diffTime / (1000 * 60 * 60 * 24);
-    return diffDays <= days;
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
+      setLoading(false);
     }
   };
 
   return (
-    <Card className="h-[600px] flex flex-col bg-gradient-to-br from-card via-card to-card/90 border-border/50">
-      {/* Chat Header */}
-      <div className="border-b border-border/50 p-4 bg-gradient-to-r from-primary/10 to-accent/10">
-        <div className="flex items-center space-x-3">
-          <Avatar className="h-8 w-8 bg-gradient-to-br from-accent to-accent-glow">
-            <AvatarFallback className="bg-transparent text-accent-foreground">
-              <Bot className="h-4 w-4" />
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <h3 className="font-semibold text-foreground">AI Fitness Coach</h3>
-            <p className="text-xs text-muted-foreground">
-              Model: {settings.model} • Temperature: {settings.temperature} • {logs.length} logs in memory
-            </p>
+    <Card className="h-[600px] flex flex-col">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">AI Fitness Coach</CardTitle>
+          <div className="flex items-center space-x-2">
+            {settings.apiKey ? (
+              <Badge variant="secondary" className="text-xs">
+                <Wifi className="w-3 h-3 mr-1" />
+                Connected
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs">
+                <WifiOff className="w-3 h-3 mr-1" />
+                Offline Mode
+              </Badge>
+            )}
           </div>
         </div>
-      </div>
-
-      {/* Messages Area */}
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-        <div className="space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex items-start space-x-3 ${
-                message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-              }`}
-            >
-              <Avatar className={`h-8 w-8 ${
-                message.role === 'user' 
-                  ? 'bg-gradient-to-br from-primary to-primary-glow' 
-                  : 'bg-gradient-to-br from-accent to-accent-glow'
-              }`}>
-                <AvatarFallback className="bg-transparent text-white">
-                  {message.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                </AvatarFallback>
-              </Avatar>
-              
-              <div className={`flex-1 max-w-[80%] ${message.role === 'user' ? 'text-right' : ''}`}>
-                <div
-                  className={`rounded-lg p-3 ${
-                    message.role === 'user'
-                      ? 'bg-gradient-to-br from-primary to-primary-glow text-primary-foreground'
-                      : 'bg-muted border border-border/50'
-                  }`}
-                >
-                  {message.role === 'assistant' ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none prose-code:bg-accent/20 prose-code:text-accent prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
-                      <ReactMarkdown 
-                        components={{
-                          code: ({ children, ...props }) => (
-                            <code 
-                              className="bg-accent/20 text-accent px-1 py-0.5 rounded text-sm font-mono" 
-                              {...props}
-                            >
-                              {children}
-                            </code>
-                          ),
-                          p: ({ children, ...props }) => (
-                            <p className="mb-2 last:mb-0" {...props}>{children}</p>
-                          )
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p className="text-sm">{message.content}</p>
-                  )}
-                </div>
-                <p className={`text-xs text-muted-foreground mt-1 ${
-                  message.role === 'user' ? 'text-right' : ''
-                }`}>
-                  {format(message.timestamp, 'HH:mm')}
+        <Separator />
+      </CardHeader>
+      
+      <CardContent className="flex-1 flex flex-col p-0">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 px-6">
+          <div className="space-y-4 py-4">
+            {messages.length === 0 ? (
+              <div className="text-center py-8">
+                <Bot className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Welcome to Your AI Fitness Coach!</h3>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  I'm here to help you achieve your fitness goals. Ask me about your workouts, nutrition, 
+                  recovery, or any fitness-related questions.
                 </p>
               </div>
-            </div>
-          ))}
-          
-          {isLoading && (
-            <div className="flex items-start space-x-3">
-              <Avatar className="h-8 w-8 bg-gradient-to-br from-accent to-accent-glow">
-                <AvatarFallback className="bg-transparent text-white">
-                  <Bot className="h-4 w-4" />
-                </AvatarFallback>
-              </Avatar>
-              <div className="bg-muted border border-border/50 rounded-lg p-3">
-                <div className="flex items-center space-x-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Analyzing with AI...</span>
+            ) : (
+              messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex items-start space-x-3 ${
+                    message.isUser ? 'flex-row-reverse space-x-reverse' : ''
+                  }`}
+                >
+                  <Avatar className={`h-8 w-8 ${
+                    message.isUser 
+                      ? 'bg-gradient-to-br from-primary to-primary-glow' 
+                      : 'bg-gradient-to-br from-accent to-accent-glow'
+                  }`}>
+                    <AvatarFallback className="bg-transparent text-white">
+                      {message.isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div className={`flex-1 max-w-[80%] ${message.isUser ? 'text-right' : ''}`}>
+                    <div
+                      className={`rounded-lg p-3 ${
+                        message.isUser
+                          ? 'bg-gradient-to-br from-primary to-primary-glow text-primary-foreground'
+                          : 'bg-accent/20 text-accent-foreground'
+                      }`}
+                    >
+                      {!message.isUser ? (
+                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                          <ReactMarkdown>{message.content}</ReactMarkdown>
+                        </div>
+                      ) : (
+                        <p className="text-sm">{message.content}</p>
+                      )}
+                    </div>
+                    <p className={`text-xs text-muted-foreground mt-1 ${
+                      message.isUser ? 'text-right' : ''
+                    }`}>
+                      {message.timestamp.toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+            
+            {loading && (
+              <div className="flex items-start space-x-3">
+                <Avatar className="h-8 w-8 bg-gradient-to-br from-accent to-accent-glow">
+                  <AvatarFallback className="bg-transparent text-white">
+                    <Bot className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 max-w-[80%]">
+                  <div className="bg-accent/20 text-accent-foreground rounded-lg p-3">
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">Thinking...</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
-
-      {/* Input Area */}
-      <div className="border-t border-border/50 p-4">
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <Textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about your training, log something, or get coaching advice..."
-            className="min-h-[60px] bg-input border-border/50 focus:ring-accent resize-none"
-            disabled={isLoading}
-          />
-          <div className="flex justify-between items-center">
-            <p className="text-xs text-muted-foreground">
-              {settings.searchEnabled && "🔍 Web search enabled"} • Press Enter to send, Shift+Enter for new line
-            </p>
-            <Button 
-              type="submit" 
-              disabled={!input.trim() || isLoading}
-              className="bg-gradient-to-r from-accent to-accent-glow hover:from-accent-glow hover:to-accent"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
+            )}
           </div>
-        </form>
-      </div>
+        </ScrollArea>
+        
+        <div className="p-6 pt-4 border-t">
+          <form onSubmit={handleSubmit} className="space-y-2">
+            <div className="flex space-x-2">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
+                placeholder="Ask about your fitness journey..."
+                className="resize-none"
+                rows={2}
+              />
+              <Button 
+                type="submit" 
+                size="sm" 
+                className="px-3"
+                disabled={loading || !input.trim()}
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </form>
+        </div>
+      </CardContent>
     </Card>
   );
-};
+}

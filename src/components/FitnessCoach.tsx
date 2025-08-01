@@ -3,10 +3,14 @@ import { ChatInterface } from './ChatInterface';
 import { LogEntry } from './LogEntry';
 import { LogHistory } from './LogHistory';
 import { SettingsPanel } from './SettingsPanel';
+import { AuthForm } from './auth/AuthForm';
+import { ChatManager } from './chat/ChatManager';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Dumbbell, MessageSquare, History } from 'lucide-react';
+import { Settings, Dumbbell, MessageSquare, History, LogOut } from 'lucide-react';
 import { memoryService } from '@/services/memory';
+import { useAuth } from '@/hooks/useAuth';
+import { useChatStorage } from '@/hooks/useChatStorage';
 
 export interface NutritionData {
   calories?: number;
@@ -78,39 +82,68 @@ export interface Log {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
   content: string;
+  isUser: boolean;
   timestamp: Date;
 }
 
 export interface CoachSettings {
-  temperature: number;
+  apiKey: string;
   model: string;
-  searchEnabled: boolean;
-  memoryDepth: number;
+  temperature: number;
+  webSearchEnabled: boolean;
 }
 
 export const FitnessCoach = () => {
+  const { user, loading, signOut, setUser } = useAuth();
+  const { 
+    chats, 
+    currentChatId, 
+    setCurrentChatId, 
+    createNewChat, 
+    updateChat, 
+    deleteChat, 
+    getCurrentChat,
+    addMessageToCurrentChat 
+  } = useChatStorage();
+  
   const [logs, setLogs] = useState<Log[]>([]);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: "🏋️‍♂️ **Welcome to your AI Fitness Coach!**\n\nI'm here to help you achieve your fitness goals with science-backed guidance. I can:\n\n- **Analyze your logs** and track progress\n- **Provide personalized coaching** based on your data\n- **Research latest fitness science** for evidence-based advice\n- **Remember your history** to give context-aware suggestions\n\nLet's start by logging your current status or ask me anything about your training!",
-      timestamp: new Date()
-    }
-  ]);
   const [settings, setSettings] = useState<CoachSettings>({
+    apiKey: '',
+    model: 'gpt-4.1-2025-04-14',
     temperature: 0.7,
-    model: 'gpt-4o',
-    searchEnabled: true,
-    memoryDepth: 50
+    webSearchEnabled: false
   });
 
   useEffect(() => {
-    // Initialize memory service on component mount
     memoryService.initialize();
-  }, []);
+    
+    // Create initial chat if none exist
+    if (!loading && user && chats.length === 0) {
+      createNewChat();
+    }
+  }, [loading, user, chats.length]);
+
+  const handleSendMessage = (content: string, aiResponse?: string) => {
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content,
+      isUser: true,
+      timestamp: new Date()
+    };
+
+    addMessageToCurrentChat(userMessage);
+    
+    if (aiResponse) {
+      const assistantMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        content: aiResponse,
+        isUser: false,
+        timestamp: new Date()
+      };
+      addMessageToCurrentChat(assistantMessage);
+    }
+  };
 
   const handleNewLog = async (log: Omit<Log, 'id' | 'timestamp'>) => {
     // Parse natural language for structured data if not already structured
@@ -131,13 +164,10 @@ export const FitnessCoach = () => {
     }
     
     // Auto-generate coaching response based on log
-    const aiResponse: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: generateLogResponse(newLog),
-      timestamp: new Date()
-    };
-    setChatMessages(prev => [...prev, aiResponse]);
+    const aiResponse = generateLogResponse(newLog);
+    if (aiResponse) {
+      handleSendMessage(log.content, aiResponse);
+    }
   };
 
   const parseNaturalLanguageLog = (log: Omit<Log, 'id' | 'timestamp'>): Omit<Log, 'id' | 'timestamp'> => {
@@ -193,87 +223,104 @@ export const FitnessCoach = () => {
     return "📝 Log recorded! I'll analyze this with your historical data to provide better coaching.";
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-gradient-to-r from-primary to-primary-glow">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Dumbbell className="h-8 w-8 text-accent" />
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">AI Fitness Coach</h1>
-                <p className="text-sm text-muted-foreground">Science-backed training guidance</p>
-              </div>
-            </div>
-          </div>
+  // Show auth form if not authenticated
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Dumbbell className="w-12 h-12 text-accent mx-auto mb-4 animate-pulse" />
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
+    );
+  }
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="chat" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-card">
-            <TabsTrigger value="chat" className="flex items-center space-x-2">
-              <MessageSquare className="h-4 w-4" />
-              <span>Chat</span>
-            </TabsTrigger>
-            <TabsTrigger value="log" className="flex items-center space-x-2">
-              <Dumbbell className="h-4 w-4" />
-              <span>Log Entry</span>
-            </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center space-x-2">
-              <History className="h-4 w-4" />
-              <span>History</span>
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center space-x-2">
-              <Settings className="h-4 w-4" />
-              <span>Settings</span>
-            </TabsTrigger>
-          </TabsList>
+  if (!user) {
+    return <AuthForm onAuthSuccess={setUser} />;
+  }
 
-          <TabsContent value="chat">
-            <ChatInterface 
-              messages={chatMessages}
-              onSendMessage={(content, aiResponse) => {
-                const userMessage: ChatMessage = {
-                  id: crypto.randomUUID(),
-                  role: 'user',
-                  content,
-                  timestamp: new Date()
-                };
-                setChatMessages(prev => [...prev, userMessage]);
-                
-                if (aiResponse) {
-                  const assistantMessage: ChatMessage = {
-                    id: crypto.randomUUID(),
-                    role: 'assistant',
-                    content: aiResponse,
-                    timestamp: new Date()
-                  };
-                  setChatMessages(prev => [...prev, assistantMessage]);
-                }
-              }}
-              logs={logs}
-              settings={settings}
-            />
-          </TabsContent>
+  const currentChat = getCurrentChat();
+  const chatMessages = currentChat?.messages || [];
 
-          <TabsContent value="log">
-            <LogEntry onSubmit={handleNewLog} />
-          </TabsContent>
+  return (
+    <div className="min-h-screen bg-background flex">
+      <ChatManager
+        currentChatId={currentChatId}
+        onChatSelect={setCurrentChatId}
+        onNewChat={createNewChat}
+        chats={chats}
+        onUpdateChat={updateChat}
+        onDeleteChat={deleteChat}
+      />
+      
+      <div className="flex-1 flex flex-col">
+        <header className="bg-card border-b px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Dumbbell className="w-8 h-8 text-accent" />
+              <div>
+                <h1 className="text-xl font-bold">AI Fitness Coach</h1>
+                <p className="text-sm text-muted-foreground">Welcome back, {user.name}</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm">
+                Export Data
+              </Button>
+              <Button variant="outline" size="sm" onClick={signOut}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
+          </div>
+        </header>
 
-          <TabsContent value="history">
-            <LogHistory logs={logs} />
-          </TabsContent>
+        <div className="flex-1 container mx-auto px-6 py-6">
+          <Tabs defaultValue="chat" className="h-full flex flex-col space-y-6">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="chat" className="flex items-center space-x-2">
+                <MessageSquare className="w-4 h-4" />
+                <span>Chat</span>
+              </TabsTrigger>
+              <TabsTrigger value="log" className="flex items-center space-x-2">
+                <Dumbbell className="w-4 h-4" />
+                <span>Log Entry</span>
+              </TabsTrigger>
+              <TabsTrigger value="history" className="flex items-center space-x-2">
+                <History className="w-4 h-4" />
+                <span>History</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="flex items-center space-x-2">
+                <Settings className="w-4 h-4" />
+                <span>Settings</span>
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="settings">
-            <SettingsPanel 
-              settings={settings}
-              onSettingsChange={setSettings}
-            />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="chat" className="flex-1">
+              <ChatInterface 
+                messages={chatMessages}
+                onSendMessage={handleSendMessage}
+                logs={logs}
+                settings={settings}
+              />
+            </TabsContent>
+
+            <TabsContent value="log" className="flex-1">
+              <LogEntry onNewLog={handleNewLog} />
+            </TabsContent>
+
+            <TabsContent value="history" className="flex-1">
+              <LogHistory logs={logs} />
+            </TabsContent>
+
+            <TabsContent value="settings" className="flex-1">
+              <SettingsPanel 
+                settings={settings}
+                onSettingsChange={setSettings}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
