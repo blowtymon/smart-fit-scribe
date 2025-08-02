@@ -35,7 +35,7 @@ export interface Chat {
 interface ChatManagerProps {
   currentChatId: string;
   onChatSelect: (chatId: string) => void;
-  onNewChat: () => void;
+  onNewChat: (folderId?: string) => string;
   chats: Chat[];
   onUpdateChat: (chatId: string, updates: Partial<Chat>) => void;
   onDeleteChat: (chatId: string) => void;
@@ -54,6 +54,7 @@ export function ChatManager({
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
   // Load folders from localStorage
   useEffect(() => {
@@ -113,6 +114,17 @@ export function ChatManager({
       ...folder,
       chatIds: folder.chatIds.filter(id => id !== chatId)
     })));
+  };
+
+  const handleNewChat = () => {
+    const newChatId = onNewChat(selectedFolderId || undefined);
+    
+    // If a folder is selected, automatically add the new chat to it
+    if (selectedFolderId && newChatId) {
+      setTimeout(() => {
+        moveChatToFolder(newChatId, selectedFolderId);
+      }, 100);
+    }
   };
 
   const filteredChats = chats.filter(chat =>
@@ -220,7 +232,13 @@ export function ChatManager({
     
     return (
       <div className="space-y-1">
-        <div className="group flex items-center justify-between p-2 rounded-md hover:bg-accent/30">
+        <div 
+          className={cn(
+            "group flex items-center justify-between p-2 rounded-md hover:bg-accent/30 cursor-pointer transition-colors",
+            selectedFolderId === folder.id && "bg-accent/50 border border-accent"
+          )}
+          onClick={() => setSelectedFolderId(selectedFolderId === folder.id ? null : folder.id)}
+        >
           <div className="flex items-center space-x-2 flex-1">
             <Folder className="w-4 h-4 text-muted-foreground" />
             {editingFolderId === folder.id ? (
@@ -290,9 +308,9 @@ export function ChatManager({
   const sidebarContent = (
     <div className="h-full flex flex-col">
       <div className="p-4 space-y-4">
-        <Button onClick={onNewChat} className="w-full">
+        <Button onClick={handleNewChat} className="w-full">
           <Plus className="w-4 h-4 mr-2" />
-          New Chat
+          {selectedFolderId ? `New Chat in ${folders.find(f => f.id === selectedFolderId)?.name}` : 'New Chat'}
         </Button>
         
         <div className="relative">
