@@ -232,7 +232,10 @@ export function ChatManager({
                 onBlur={() => setEditingFolderId(null)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    renameFolder(folder.id, folder.name);
+                    const updatedFolder = folders.find(f => f.id === folder.id);
+                    if (updatedFolder) {
+                      renameFolder(folder.id, updatedFolder.name);
+                    }
                   }
                 }}
                 className="h-6 text-sm"

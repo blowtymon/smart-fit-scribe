@@ -306,7 +306,7 @@ export const FitnessCoach = () => {
             </TabsContent>
 
             <TabsContent value="log" className="flex-1">
-              <LogEntry onNewLog={handleNewLog} />
+              <LogEntry onSubmit={handleNewLog} />
             </TabsContent>
 
             <TabsContent value="history" className="flex-1">

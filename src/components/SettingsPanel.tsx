@@ -178,12 +178,12 @@ export const SettingsPanel = ({ settings, onSettingsChange }: SettingsPanelProps
               </p>
             </div>
             <Switch
-              checked={settings.searchEnabled}
-              onCheckedChange={(checked) => updateSetting('searchEnabled', checked)}
+              checked={settings.webSearchEnabled}
+              onCheckedChange={(checked) => updateSetting('webSearchEnabled', checked)}
             />
           </div>
 
-          {settings.searchEnabled && (
+          {settings.webSearchEnabled && (
             <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border/30">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -225,10 +225,11 @@ export const SettingsPanel = ({ settings, onSettingsChange }: SettingsPanelProps
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
-            <Label>Memory Depth: {settings.memoryDepth} logs</Label>
+            <Label>Memory Depth: 50 logs</Label>
             <Slider
-              value={[settings.memoryDepth]}
-              onValueChange={([value]) => updateSetting('memoryDepth', value)}
+              value={[50]}
+              onValueChange={() => {}}
+              disabled
               max={200}
               min={10}
               step={10}

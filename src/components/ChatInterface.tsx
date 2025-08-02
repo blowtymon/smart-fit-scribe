@@ -53,8 +53,9 @@ export function ChatInterface({ messages, onSendMessage, logs, settings }: ChatI
 
         if (settings.webSearchEnabled && messageContent.toLowerCase().includes('research')) {
           try {
-            const searchResults = await searchService.search(messageContent);
-            aiResponse = await openAIService.generateResponse(messages, logs, searchResults);
+            const searchResults = await searchService.searchFitnessResearch({ query: messageContent });
+            const searchSummary = await searchService.summarizeResearch(searchResults);
+            aiResponse = await openAIService.generateResponse(messages, logs, searchSummary);
           } catch {
             aiResponse = await openAIService.generateResponse(messages, logs);
           }
