@@ -236,7 +236,7 @@ export const FitnessCoach = () => {
   }
 
   if (!user) {
-    return <AuthForm onAuthSuccess={setUser} />;
+    return <AuthForm />;
   }
 
   const currentChat = getCurrentChat();
@@ -247,7 +247,7 @@ export const FitnessCoach = () => {
       <ChatManager
         currentChatId={currentChatId}
         onChatSelect={setCurrentChatId}
-        onNewChat={createNewChat}
+        onNewChat={(folderId) => createNewChat(folderId)}
         chats={chats}
         onUpdateChat={updateChat}
         onDeleteChat={deleteChat}

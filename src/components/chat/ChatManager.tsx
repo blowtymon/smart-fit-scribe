@@ -35,7 +35,7 @@ export interface Chat {
 interface ChatManagerProps {
   currentChatId: string;
   onChatSelect: (chatId: string) => void;
-  onNewChat: (folderId?: string) => string;
+  onNewChat: (folderId?: string) => Promise<string>;
   chats: Chat[];
   onUpdateChat: (chatId: string, updates: Partial<Chat>) => void;
   onDeleteChat: (chatId: string) => void;
@@ -116,8 +116,8 @@ export function ChatManager({
     })));
   };
 
-  const handleNewChat = () => {
-    const newChatId = onNewChat(selectedFolderId || undefined);
+  const handleNewChat = async () => {
+    const newChatId = await onNewChat(selectedFolderId || undefined);
     
     // If a folder is selected, automatically add the new chat to it
     if (selectedFolderId && newChatId) {

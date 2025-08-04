@@ -5,50 +5,59 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Mail, Lock, User } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
-interface AuthFormProps {
-  onAuthSuccess: (user: { id: string; email: string; name: string }) => void;
-}
-
-export function AuthForm({ onAuthSuccess }: AuthFormProps) {
+export function AuthForm() {
+  const { signIn, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    
-    // Simulate auth process
-    setTimeout(() => {
-      const user = {
-        id: Math.random().toString(36).substr(2, 9),
-        email,
-        name: name || email.split('@')[0]
-      };
+
+    try {
+      let response;
       
-      localStorage.setItem('fitness_user', JSON.stringify(user));
-      onAuthSuccess(user);
+      if (isSignUp) {
+        response = await signUp(email, password, name || email.split('@')[0]);
+      } else {
+        response = await signIn(email, password);
+      }
+
+      if (!response.success) {
+        setError(response.error || 'Authentication failed');
+      }
+    } catch (error) {
+      setError('Network error. Please try again.');
+      console.error('Auth error:', error);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
+    setError('');
     setLoading(true);
-    // Simulate Google auth
-    setTimeout(() => {
-      const user = {
-        id: 'google_' + Math.random().toString(36).substr(2, 9),
-        email: 'user@gmail.com',
-        name: 'Google User'
-      };
+    
+    try {
+      // For demo purposes, create a Google user
+      const response = await signUp('user@gmail.com', 'google-auth-demo', 'Google User');
       
-      localStorage.setItem('fitness_user', JSON.stringify(user));
-      onAuthSuccess(user);
+      if (!response.success) {
+        setError(response.error || 'Google sign-in failed');
+      }
+    } catch (error) {
+      setError('Google sign-in error. Please try again.');
+      console.error('Google auth error:', error);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -66,6 +75,11 @@ export function AuthForm({ onAuthSuccess }: AuthFormProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {error && (
+            <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
+              {error}
+            </div>
+          )}
           <Button
             onClick={handleGoogleSignIn}
             variant="outline"
