@@ -8,6 +8,7 @@ import { ChatManager } from './chat/ChatManager';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings, Dumbbell, MessageSquare, History, LogOut } from 'lucide-react';
+import { FileUpload } from './FileUpload';
 import { memoryService } from '@/services/memory';
 import { useAuth } from '@/hooks/useAuth';
 import { useChatStorage } from '@/hooks/useChatStorage';
@@ -264,6 +265,7 @@ export const FitnessCoach = () => {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <FileUpload />
               <Button variant="outline" size="sm">
                 Export Data
               </Button>
